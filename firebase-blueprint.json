@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "artist", "producer"] }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Artist": {
+      "title": "Artist",
+      "description": "Music artist profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "bio": { "type": "string" },
+        "imageURL": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["name", "createdBy"]
+    },
+    "Release": {
+      "title": "Release",
+      "description": "Music release (album, single, EP)",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "artistId": { "type": "string" },
+        "releaseDate": { "type": "string", "format": "date" },
+        "coverURL": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "scheduled", "released"] }
+      },
+      "required": ["title", "artistId", "status"]
+    },
+    "Track": {
+      "title": "Track",
+      "description": "Individual music track",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "releaseId": { "type": "string" },
+        "audioURL": { "type": "string" },
+        "duration": { "type": "number" },
+        "order": { "type": "number" }
+      },
+      "required": ["title", "releaseId"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "Studio recording session",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "artistId": { "type": "string" },
+        "producerId": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["scheduled", "completed", "cancelled"] }
+      },
+      "required": ["title", "date", "artistId", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Studio task or todo",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["todo", "in-progress", "done"] }
+      },
+      "required": ["title", "status"]
+    },
+    "File": {
+      "title": "File",
+      "description": "Uploaded file metadata",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "type": { "type": "string" },
+        "size": { "type": "number" },
+        "uploadedBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "folderId": { "type": "string" }
+      },
+      "required": ["name", "url", "uploadedBy", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Real-time chat message",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "channelId": { "type": "string" }
+      },
+      "required": ["text", "senderId", "createdAt", "channelId"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/artists/{artistId}": { "schema": "Artist", "description": "Artists" },
+    "/releases/{releaseId}": { "schema": "Release", "description": "Releases" },
+    "/tracks/{trackId}": { "schema": "Track", "description": "Tracks" },
+    "/sessions/{sessionId}": { "schema": "Session", "description": "Studio sessions" },
+    "/tasks/{taskId}": { "schema": "Task", "description": "Tasks" },
+    "/files/{fileId}": { "schema": "File", "description": "Files" },
+    "/chats/{chatId}": { "schema": "ChatMessage", "description": "Chat messages" }
+  }
+}

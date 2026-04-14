@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, email, displayName, photoURL, role
+    //
+    // Collection: artists
+    // Fields: name, bio, imageURL, createdBy
+    //
+    // Collection: releases
+    // Fields: title, artistId, releaseDate, coverURL, status
+    //
+    // Collection: tracks
+    // Fields: title, releaseId, audioURL, duration, order
+    //
+    // Collection: sessions
+    // Fields: title, date, startTime, endTime, artistId, producerId, notes, status
+    //
+    // Collection: tasks
+    // Fields: title, description, assignedTo, dueDate, status
+    //
+    // Collection: files
+    // Fields: name, url, type, size, uploadedBy, createdAt, folderId
+    //
+    // Collection: chats
+    // Fields: text, senderId, senderName, createdAt, channelId
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "jessejrocsheffield@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.email is string && (data.email.size() == 0 || isValidEmail(data.email)) &&
+             data.displayName is string &&
+             data.photoURL is string &&
+             data.role in ['admin', 'artist', 'producer'];
+    }
+
+    function isValidArtist(data) {
+      return hasRequiredFields(['name', 'createdBy']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.createdBy is string;
+    }
+
+    function isValidRelease(data) {
+      return hasRequiredFields(['title', 'artistId', 'status']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.status in ['draft', 'scheduled', 'released'];
+    }
+
+    function isValidTrack(data) {
+      return hasRequiredFields(['title', 'releaseId']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200;
+    }
+
+    function isValidSession(data) {
+      return hasRequiredFields(['title', 'date', 'artistId', 'status']) &&
+             data.title is string && data.status in ['scheduled', 'completed', 'cancelled'];
+    }
+
+    function isValidTask(data) {
+      return hasRequiredFields(['title', 'status']) &&
+             data.title is string && data.status in ['todo', 'in-progress', 'done'];
+    }
+
+    function isValidFile(data) {
+      return hasRequiredFields(['name', 'url', 'uploadedBy', 'createdAt']) &&
+             data.name is string && data.url is string;
+    }
+
+    function isValidChat(data) {
+      return hasRequiredFields(['text', 'senderId', 'createdAt', 'channelId']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 2000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role != 'admin' || isAdmin());
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /artists/{artistId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidArtist(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || request.auth.uid == resource.data.createdBy) && isValidArtist(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /releases/{releaseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidRelease(request.resource.data);
+      allow update: if isAuthenticated() && isValidRelease(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /tracks/{trackId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTrack(request.resource.data);
+      allow update: if isAuthenticated() && isValidTrack(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidSession(request.resource.data);
+      allow update: if isAuthenticated() && isValidSession(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data);
+      allow update: if isAuthenticated() && isValidTask(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /files/{fileId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidFile(request.resource.data);
+      allow update: if isAuthenticated() && isValidFile(request.resource.data);
+      allow delete: if isAdmin() || request.auth.uid == resource.data.uploadedBy;
+    }
+
+    match /chats/{chatId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidChat(request.resource.data);
+      allow update: if false; // Messages are immutable
+      allow delete: if isAdmin() || request.auth.uid == resource.data.senderId;
+    }
+  }
+}
