@@ -1,0 +1,1 @@
+{\n  "projects": {\n    "default": "your-project-id"\n  },\n  "targets": {\n    "your-project-id": {\n      "hosting": {\n        "site": "your-site-name"\n      }\n    }\n  }\n}
